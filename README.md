@@ -35,7 +35,7 @@ The server listens on port `8080` and prints the URL to open on your Kindle.
 The app usually prints this for you:
 
 ```text
-Open this on your Kindle: http://192.168.1.23:8080/
+Open this on your Kindle: http://YOUR_COMPUTER_IP:8080/
 ```
 
 If it cannot detect your IP address, find it manually.
@@ -57,13 +57,13 @@ ipconfig getifaddr en1
 Make sure the Kindle is on the same Wi-Fi network, then open the Kindle browser and go to:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/
+http://YOUR_COMPUTER_IP:8080/
 ```
 
 Example:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/
+http://YOUR_COMPUTER_IP:8080/
 ```
 
 The page auto-refreshes every 30 seconds.
@@ -75,31 +75,31 @@ Keep the Terminal window open while the Kindle display is running.
 Show the default bus stop:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/
+http://YOUR_COMPUTER_IP:8080/
 ```
 
 Show only one bus service:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/?service=265
+http://YOUR_COMPUTER_IP:8080/?service=265
 ```
 
 Change refresh rate:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/?refresh=30
+http://YOUR_COMPUTER_IP:8080/?refresh=30
 ```
 
 Use the landscape Kindle layout:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/?layout=landscape&refresh=30
+http://YOUR_COMPUTER_IP:8080/?layout=landscape&refresh=30
 ```
 
 Get JSON data:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/api/bus
+http://YOUR_COMPUTER_IP:8080/api/bus
 ```
 
 ## Change Bus Stop
@@ -120,13 +120,13 @@ python3 bus_kindle.py
 You can also change the bus stop from the URL without editing code:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/?stop=83139&address=My%20Bus%20Stop
+http://YOUR_COMPUTER_IP:8080/?stop=83139&address=My%20Bus%20Stop
 ```
 
 For Kindle landscape mode:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/?layout=landscape&refresh=30&stop=83139&address=My%20Bus%20Stop
+http://YOUR_COMPUTER_IP:8080/?layout=landscape&refresh=30&stop=83139&address=My%20Bus%20Stop
 ```
 
 Use LTA's bus stop code for `stop`. The `address` value is just a display label; replace spaces with `%20`.
