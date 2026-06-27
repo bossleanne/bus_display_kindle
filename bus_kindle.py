@@ -776,7 +776,7 @@ class BusHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def log_message(self, format: str, *args: Any) -> None:
-        sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
+        sys.stderr.write("request - %s\n" % (format % args))
 
 
 def parse_refresh(value: str) -> int:
@@ -790,12 +790,9 @@ def main() -> None:
     load_dotenv()
     port = int(os.environ.get("PORT", "8080"))
     server = ThreadingHTTPServer(("0.0.0.0", port), BusHandler)
-    lan_ip = local_ip_address()
-    print(f"Kindle bus display running at http://0.0.0.0:{port}/")
-    if lan_ip:
-        print(f"Open this on your Kindle: http://{lan_ip}:{port}/")
-    else:
-        print("Could not detect LAN IP. Use `ipconfig getifaddr en0` on macOS.")
+    print(f"Kindle bus display running on port {port}.")
+    print(f"Open http://YOUR_COMPUTER_IP:{port}/ on your Kindle.")
+    print("Find YOUR_COMPUTER_IP with `ipconfig getifaddr en0` on macOS.")
     print(f"Default stop: {DEFAULT_STOP} ({DEFAULT_ADDRESS})")
     server.serve_forever()
 
