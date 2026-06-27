@@ -221,6 +221,10 @@ class BusKindleTests(unittest.TestCase):
             self.assertEqual(bus_kindle.default_stop(), "98765")
             self.assertEqual(bus_kindle.default_address(), "Example Stop")
 
+    def test_display_host_can_come_from_environment(self):
+        with patch.dict(os.environ, {"DISPLAY_HOST": "REMOVED_LOCAL_HOST"}, clear=False):
+            self.assertEqual(bus_kindle.display_host(), "REMOVED_LOCAL_HOST")
+
     def test_normalise_layout_accepts_horizontal_aliases(self):
         self.assertEqual(bus_kindle.normalise_layout("horizontal"), "landscape")
         self.assertEqual(bus_kindle.normalise_layout("wide"), "landscape")

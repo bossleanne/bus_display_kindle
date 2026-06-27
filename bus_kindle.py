@@ -3,7 +3,7 @@
 Kindle-friendly Singapore bus arrival display.
 
 Run this on a computer on the same Wi-Fi as your Kindle, then open:
-  http://YOUR_COMPUTER_IP:8080/
+  http://REMOVED_LOCAL_HOST:8080/
 
 Set your LTA DataMall API key in .env first:
   python3 setup_key.py
@@ -32,6 +32,7 @@ DEFAULT_REFRESH_SECONDS = 30
 DEFAULT_LTA_BUS_ARRIVAL_URL = "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival"
 DEFAULT_WEATHER_FORECAST_URL = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
 DEFAULT_WEATHER_AREA = "REMOVED_WEATHER_AREA"
+DEFAULT_DISPLAY_HOST = "REMOVED_LOCAL_HOST"
 MACOS_CERTIFICATE_HELPER = "/Applications/Python 3.14/Install Certificates.command"
 
 
@@ -710,6 +711,10 @@ def default_address() -> str:
     return os.environ.get("BUS_ADDRESS", DEFAULT_ADDRESS).strip() or DEFAULT_ADDRESS
 
 
+def display_host() -> str:
+    return os.environ.get("DISPLAY_HOST", DEFAULT_DISPLAY_HOST).strip() or DEFAULT_DISPLAY_HOST
+
+
 class BusHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
@@ -790,9 +795,10 @@ def main() -> None:
     load_dotenv()
     port = int(os.environ.get("PORT", "8080"))
     server = ThreadingHTTPServer(("0.0.0.0", port), BusHandler)
+    host = display_host()
     print(f"Kindle bus display running on port {port}.")
-    print(f"Open http://YOUR_COMPUTER_IP:{port}/ on your Kindle.")
-    print("Find YOUR_COMPUTER_IP with `ipconfig getifaddr en0` on macOS.")
+    print(f"Open http://{host}:{port}/ on your Kindle.")
+    print("If that name does not load, configure your Mac/router so it resolves to this Mac.")
     print(f"Default stop: {DEFAULT_STOP} ({DEFAULT_ADDRESS})")
     server.serve_forever()
 
