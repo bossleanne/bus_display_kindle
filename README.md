@@ -32,17 +32,13 @@ The server listens on port `8080` and prints the URL to open on your Kindle.
 
 ## 3. Choose the URL
 
-By default, the app prints this friendly URL:
+By default, the app prints your computer's IP address:
 
 ```text
-Open this on your Kindle: http://REMOVED_LOCAL_HOST:8080/
+Open this on your Kindle: http://YOUR_COMPUTER_IP:8080/
 ```
 
-For this to work, your Mac or router must resolve `REMOVED_LOCAL_HOST` to the Mac running the server.
-
-If `REMOVED_LOCAL_HOST` does not load on the Kindle, use your Mac IP address instead.
-
-On macOS:
+If the app cannot detect the IP automatically, find it on macOS:
 
 ```sh
 ipconfig getifaddr en0
@@ -61,13 +57,13 @@ Then open `http://YOUR_COMPUTER_IP:8080/`.
 Make sure the Kindle is on the same Wi-Fi network, then open the Kindle browser and go to:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/
+http://YOUR_COMPUTER_IP:8080/
 ```
 
 Example:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/
+http://REMOVED_LOCAL_IP:8080/
 ```
 
 The page auto-refreshes every 30 seconds.
@@ -76,46 +72,58 @@ Keep the Terminal window open while the Kindle display is running.
 
 ## Useful URLs
 
-Show the default bus stop:
+Show both nearby bus stops:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/
+http://YOUR_COMPUTER_IP:8080/
+```
+
+Show Blk REMOVED_STOP_ALIAS AMK, stop `REMOVED_BUS_STOP`:
+
+```text
+http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS
+```
+
+Show REMOVED_WEATHER_AREA Avenue 4 Blk REMOVED_STOP_ALIAS, stop `REMOVED_BUS_STOP`:
+
+```text
+http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS
 ```
 
 Show only one bus service:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/?service=265
+http://YOUR_COMPUTER_IP:8080/?service=265
 ```
 
 Change refresh rate:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/?refresh=30
+http://YOUR_COMPUTER_IP:8080/?refresh=30
 ```
 
 Use the landscape Kindle layout:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/?layout=landscape&refresh=30
+http://YOUR_COMPUTER_IP:8080/?layout=landscape&refresh=30
 ```
 
 Get JSON data:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/api/bus
+http://YOUR_COMPUTER_IP:8080/api/bus
 ```
 
 ## Change Bus Stop
 
-The default bus stop is configured in your private `.env` file:
+The fallback single bus stop is configured in your private `.env` file:
 
 ```env
-BUS_STOP=83139
-BUS_ADDRESS=My Bus Stop
+BUS_STOP=REMOVED_BUS_STOP
+BUS_ADDRESS=Blk REMOVED_STOP_ALIAS AMK
 ```
 
-To permanently use another bus stop, edit those two values in `.env`, save the file, then restart:
+To permanently use another fallback stop, edit those two values in `.env`, save the file, then restart:
 
 ```sh
 python3 bus_kindle.py
@@ -124,13 +132,13 @@ python3 bus_kindle.py
 You can also change the bus stop from the URL without editing code:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/?stop=83139&address=My%20Bus%20Stop
+http://YOUR_COMPUTER_IP:8080/?stop=REMOVED_BUS_STOP&address=Ang%20Mo%20Kio%20Ave%204%20Blk%20REMOVED_STOP_ALIAS
 ```
 
 For Kindle landscape mode:
 
 ```text
-http://REMOVED_LOCAL_HOST:8080/?layout=landscape&refresh=30&stop=83139&address=My%20Bus%20Stop
+http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS?layout=landscape&refresh=30
 ```
 
 Use LTA's bus stop code for `stop`. The `address` value is just a display label; replace spaces with `%20`.

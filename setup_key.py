@@ -16,9 +16,8 @@ def main() -> None:
         env_file.write(f"LTA_ACCOUNT_KEY={key}\n")
         env_file.write("PORT=8080\n")
         env_file.write("LTA_BUS_ARRIVAL_URL=https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival\n")
-        env_file.write("BUS_STOP=00000\n")
-        env_file.write("BUS_ADDRESS=My Bus Stop\n")
-        env_file.write("DISPLAY_HOST=REMOVED_LOCAL_HOST\n")
+        env_file.write("BUS_STOP=REMOVED_BUS_STOP\n")
+        env_file.write("BUS_ADDRESS=Blk REMOVED_STOP_ALIAS AMK\n")
 
     os.chmod(".env", 0o600)
     print(".env saved. You can now run: python3 bus_kindle.py")

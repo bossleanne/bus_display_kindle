@@ -160,6 +160,38 @@ class BusKindleTests(unittest.TestCase):
         self.assertIn("REMOVED_REMINDER_TEXT", html)
         self.assertIn('content="60"', html)
 
+    def test_render_page_can_show_both_bus_stops(self):
+        html = bus_kindle.render_page(
+            "REMOVED_BUS_STOP",
+            "Blk REMOVED_STOP_ALIAS AMK",
+            None,
+            60,
+            {
+                "Stops": [
+                    {
+                        "stop": "REMOVED_BUS_STOP",
+                        "address": "Blk REMOVED_STOP_ALIAS AMK",
+                        "payload": {"Services": [{"ServiceNo": "265", "NextBus": {"EstimatedArrival": "", "Load": "SEA"}}]},
+                        "error": None,
+                    },
+                    {
+                        "stop": "REMOVED_BUS_STOP",
+                        "address": "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS",
+                        "payload": {"Services": [{"ServiceNo": "76", "NextBus": {"EstimatedArrival": "", "Load": "SDA"}}]},
+                        "error": None,
+                    },
+                ]
+            },
+            None,
+        ).decode("utf-8")
+
+        self.assertIn("Blk REMOVED_STOP_ALIAS AMK", html)
+        self.assertIn("REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS", html)
+        self.assertIn("Stop REMOVED_BUS_STOP", html)
+        self.assertIn("Stop REMOVED_BUS_STOP", html)
+        self.assertIn('<div class="service-no">265</div>', html)
+        self.assertIn('<div class="service-no">76</div>', html)
+
     def test_friendly_error_explains_lta_unauthorized(self):
         error = urllib.error.HTTPError(
             "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival",
@@ -221,9 +253,17 @@ class BusKindleTests(unittest.TestCase):
             self.assertEqual(bus_kindle.default_stop(), "98765")
             self.assertEqual(bus_kindle.default_address(), "Example Stop")
 
-    def test_display_host_can_come_from_environment(self):
-        with patch.dict(os.environ, {"DISPLAY_HOST": "REMOVED_LOCAL_HOST"}, clear=False):
-            self.assertEqual(bus_kindle.display_host(), "REMOVED_LOCAL_HOST")
+    def test_default_stop_is_blk_REMOVED_STOP_ALIAS(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(bus_kindle.default_stop(), "REMOVED_BUS_STOP")
+            self.assertEqual(bus_kindle.default_address(), "Blk REMOVED_STOP_ALIAS AMK")
+
+    def test_stop_from_path_supports_nearby_stops(self):
+        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_STOP_ALIAS"), ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"))
+        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_BUS_STOP"), ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"))
+        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_STOP_ALIAS"), ("REMOVED_BUS_STOP", "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS"))
+        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_BUS_STOP"), ("REMOVED_BUS_STOP", "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS"))
+        self.assertIsNone(bus_kindle.stop_from_path("/unknown"))
 
     def test_normalise_layout_accepts_horizontal_aliases(self):
         self.assertEqual(bus_kindle.normalise_layout("horizontal"), "landscape")

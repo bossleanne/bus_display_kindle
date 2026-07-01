@@ -3,7 +3,7 @@
 Kindle-friendly Singapore bus arrival display.
 
 Run this on a computer on the same Wi-Fi as your Kindle, then open:
-  http://REMOVED_LOCAL_HOST:8080/
+  http://YOUR_COMPUTER_IP:8080/
 
 Set your LTA DataMall API key in .env first:
   python3 setup_key.py
@@ -26,14 +26,21 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 
-DEFAULT_STOP = "00000"
-DEFAULT_ADDRESS = "My Bus Stop"
+DEFAULT_STOP = "REMOVED_BUS_STOP"
+DEFAULT_ADDRESS = "Blk REMOVED_STOP_ALIAS AMK"
 DEFAULT_REFRESH_SECONDS = 30
 DEFAULT_LTA_BUS_ARRIVAL_URL = "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival"
 DEFAULT_WEATHER_FORECAST_URL = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
 DEFAULT_WEATHER_AREA = "REMOVED_WEATHER_AREA"
-DEFAULT_DISPLAY_HOST = "REMOVED_LOCAL_HOST"
 MACOS_CERTIFICATE_HELPER = "/Applications/Python 3.14/Install Certificates.command"
+BUS_STOPS = {
+    "blkREMOVED_STOP_ALIAS": ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
+    "blkREMOVED_STOP_ALIAS": ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
+}
+DISPLAY_STOPS = [
+    ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
+    ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
+]
 
 
 def fetch_bus_arrivals(stop: str, service: str | None = None) -> dict[str, Any]:
@@ -211,6 +218,93 @@ def normalise_services(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(services, key=lambda item: item["service"])
 
 
+def render_bus_content(payload: dict[str, Any] | None, error: str | None) -> str:
+    services = normalise_services(payload or {})
+    if error:
+        return f"""
+        <div class="message">
+          <h2>Cannot load bus times</h2>
+          <p>{html.escape(error)}</p>
+        </div>
+        """
+    if not services:
+        return """
+        <div class="message">
+          <h2>No arrivals found</h2>
+          <p>Try again in a minute.</p>
+        </div>
+        """
+
+    rows = []
+    for item in services:
+        arrivals = item["arrivals"] or [{"minutes": "-", "load": "", "type": ""}]
+        cells = "".join(
+            f"""
+            <div class="arrival">
+              <strong>{html.escape(arrival["minutes"])}</strong>
+              <span>{html.escape(arrival["load"])}</span>
+            </div>
+            """
+            for arrival in arrivals[:3]
+        )
+        rows.append(
+            f"""
+            <section class="service-row">
+              <div class="service-no">{html.escape(item["service"])}</div>
+              <div class="arrivals">{cells}</div>
+            </section>
+            """
+        )
+    return "".join(rows)
+
+
+def render_bus_panel(
+    stop: str,
+    address: str,
+    service: str | None,
+    refresh_seconds: int,
+    payload: dict[str, Any] | None,
+    error: str | None,
+    updated: str,
+    layout: str,
+    debug: bool,
+    show_stop_heading: bool = False,
+) -> str:
+    service_note = f" · {html.escape(service)}路" if service else ""
+    refresh_fields = [
+        ("stop", stop),
+        ("address", address),
+        ("refresh", str(refresh_seconds)),
+        ("layout", layout),
+    ]
+    if service:
+        refresh_fields.append(("service", service))
+    if debug:
+        refresh_fields.append(("debug", "1"))
+    refresh_fields.append(("_", str(int(time.time()))))
+    refresh_href = f"/?{urllib.parse.urlencode(refresh_fields)}"
+    heading = ""
+    if show_stop_heading:
+        heading = f"""
+        <h2>{html.escape(address)}</h2>
+        <p>Stop {html.escape(stop)}{service_note}</p>
+        """
+
+    return f"""
+    <main class="services bus-panel">
+      <div class="section-label">
+        <!--  <h2>巴士到达时间{service_note}</h2> -->
+        {heading}
+        <div class="update-row">
+          <p>最后更新：{updated}</p>
+          <a class="refresh-link" href="{html.escape(refresh_href, quote=True)}">refresh</a>
+        </div>
+      </div>
+      {render_bus_content(payload, error)}
+    </main>
+    """
+
+
 def render_page(
     stop: str,
     address: str,
@@ -228,22 +322,8 @@ def render_page(
     updated = now.strftime("%H:%M:%S")
     layout = normalise_layout(layout)
     body_class = f' class="{layout}"' if layout == "landscape" else ""
-    services = normalise_services(payload or {})
-    service_note = f" · {html.escape(service)}路" if service else ""
     weather_text = html.escape(weather_condition or "--")
     weather_icon = html.escape(weather_icon_for(weather_condition))
-    refresh_fields = [
-        ("stop", stop),
-        ("address", address),
-        ("refresh", str(refresh_seconds)),
-        ("layout", layout),
-    ]
-    if service:
-        refresh_fields.append(("service", service))
-    if debug:
-        refresh_fields.append(("debug", "1"))
-    refresh_fields.append(("_", str(int(time.time()))))
-    refresh_href = f"/?{urllib.parse.urlencode(refresh_fields)}"
     debug_panel = ""
     if debug:
         debug_panel = """
@@ -260,55 +340,25 @@ def render_page(
     </script>
         """
 
-    if error:
-        bus_content = f"""
-        <div class="message">
-          <h2>Cannot load bus times</h2>
-          <p>{html.escape(error)}</p>
-        </div>
-        """
-    elif not services:
-        bus_content = """
-        <div class="message">
-          <h2>No arrivals found</h2>
-          <p>Try again in a minute.</p>
-        </div>
-        """
+    stop_payloads = (payload or {}).get("Stops", [])
+    if stop_payloads:
+        body = "\n".join(
+            render_bus_panel(
+                item["stop"],
+                item["address"],
+                service,
+                refresh_seconds,
+                item.get("payload"),
+                item.get("error"),
+                updated,
+                layout,
+                debug,
+                True,
+            )
+            for item in stop_payloads
+        )
     else:
-        rows = []
-        for item in services:
-            arrivals = item["arrivals"] or [{"minutes": "-", "load": "", "type": ""}]
-            cells = "".join(
-                f"""
-                <div class="arrival">
-                  <strong>{html.escape(arrival["minutes"])}</strong>
-                  <span>{html.escape(arrival["load"])}</span>
-                </div>
-                """
-                for arrival in arrivals[:3]
-            )
-            rows.append(
-                f"""
-                <section class="service-row">
-                  <div class="service-no">{html.escape(item["service"])}</div>
-                  <div class="arrivals">{cells}</div>
-                </section>
-                """
-            )
-        bus_content = "".join(rows)
-
-    body = f"""
-    <main class="services bus-panel">
-      <div class="section-label">
-        <!--  <h2>巴士到达时间{service_note}</h2> -->
-        <div class="update-row">
-          <p>最后更新：{updated}</p>
-          <a class="refresh-link" href="{html.escape(refresh_href, quote=True)}">refresh</a>
-        </div>
-      </div>
-      {bus_content}
-    </main>
-    """
+        body = render_bus_panel(stop, address, service, refresh_seconds, payload, error, updated, layout, debug)
 
     document = f"""<!doctype html>
 <html lang="en">
@@ -679,7 +729,7 @@ def render_page(
       <header>
         <div class="greeting-row">
           <div class="greeting-copy">
-            <h1 class="greeting-text">大家好，欢迎来到REMOVED_PRIVATE_TEXT</h1>
+            <h1 class="greeting-text">REMOVED_GREETING_TEXT</h1>
             <h1 class="greeting-text greeting-time">今天是新加坡时间：{display_date} · {display_time}</h1>
           </div>
           <div class="weather-icon">{weather_icon}</div>
@@ -711,8 +761,9 @@ def default_address() -> str:
     return os.environ.get("BUS_ADDRESS", DEFAULT_ADDRESS).strip() or DEFAULT_ADDRESS
 
 
-def display_host() -> str:
-    return os.environ.get("DISPLAY_HOST", DEFAULT_DISPLAY_HOST).strip() or DEFAULT_DISPLAY_HOST
+def stop_from_path(path: str) -> tuple[str, str] | None:
+    key = path.strip("/").lower()
+    return BUS_STOPS.get(key)
 
 
 class BusHandler(BaseHTTPRequestHandler):
@@ -721,28 +772,52 @@ class BusHandler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
         configured_stop = default_stop()
         configured_address = default_address()
+        path_stop = stop_from_path(parsed.path)
+        if path_stop:
+            configured_stop, configured_address = path_stop
+
         stop = query.get("stop", [configured_stop])[0].strip() or configured_stop
         address = query.get("address", [configured_address])[0].strip() or configured_address
         service = query.get("service", [None])[0]
         refresh_seconds = parse_refresh(query.get("refresh", [str(DEFAULT_REFRESH_SECONDS)])[0])
         layout = normalise_layout(query.get("layout", ["portrait"])[0].strip())
         debug = query.get("debug", ["0"])[0] == "1"
+        show_all_stops = parsed.path in {"/", "/index.html"} and "stop" not in query
 
         if parsed.path == "/api/bus":
             self.send_json(stop, service)
             return
 
-        if parsed.path not in {"/", "/index.html"}:
+        if parsed.path not in {"/", "/index.html"} and not path_stop:
             self.send_error(404, "Not found")
             return
 
         payload = None
         error = None
         weather_condition = None
-        try:
-            payload = fetch_bus_arrivals(stop, service)
-        except (RuntimeError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            error = friendly_error(exc)
+        if show_all_stops:
+            stop_payloads = []
+            for display_stop, display_address in DISPLAY_STOPS:
+                stop_payload = None
+                stop_error = None
+                try:
+                    stop_payload = fetch_bus_arrivals(display_stop, service)
+                except (RuntimeError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                    stop_error = friendly_error(exc)
+                stop_payloads.append(
+                    {
+                        "stop": display_stop,
+                        "address": display_address,
+                        "payload": stop_payload,
+                        "error": stop_error,
+                    }
+                )
+            payload = {"Stops": stop_payloads}
+        else:
+            try:
+                payload = fetch_bus_arrivals(stop, service)
+            except (RuntimeError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                error = friendly_error(exc)
 
         try:
             weather_condition = fetch_weather_condition()
@@ -795,11 +870,14 @@ def main() -> None:
     load_dotenv()
     port = int(os.environ.get("PORT", "8080"))
     server = ThreadingHTTPServer(("0.0.0.0", port), BusHandler)
-    host = display_host()
+    host = local_ip_address() or "YOUR_COMPUTER_IP"
     print(f"Kindle bus display running on port {port}.")
-    print(f"Open http://{host}:{port}/ on your Kindle.")
-    print("If that name does not load, configure your Mac/router so it resolves to this Mac.")
-    print(f"Default stop: {DEFAULT_STOP} ({DEFAULT_ADDRESS})")
+    print(f"Open both stops: http://{host}:{port}/")
+    print(f"Blk REMOVED_STOP_ALIAS: http://{host}:{port}/REMOVED_STOP_ALIAS")
+    print(f"Blk REMOVED_STOP_ALIAS: http://{host}:{port}/REMOVED_STOP_ALIAS")
+    if host == "YOUR_COMPUTER_IP":
+        print("Could not detect your IP automatically. On macOS, run: ipconfig getifaddr en0")
+    print(f"Default stop: {default_stop()} ({default_address()})")
     server.serve_forever()
 
 
