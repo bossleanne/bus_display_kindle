@@ -4,7 +4,7 @@ Small Kindle-friendly page for live bus arrivals at your chosen Singapore bus st
 
 The Kindle opens a simple page from your computer. Your computer fetches the latest data from LTA DataMall, so the LTA API key is not exposed in the Kindle page.
 
-It uses LTA DataMall `v3/BusArrival`, matching the sample files in `/Users/meilin/Downloads/BusArrival`.
+It uses LTA DataMall `v3/BusArrival`.
 
 ## 1. Get an LTA DataMall API key
 
@@ -63,7 +63,7 @@ http://YOUR_COMPUTER_IP:8080/
 Example:
 
 ```text
-http://REMOVED_LOCAL_IP:8080/
+http://YOUR_COMPUTER_IP:8080/
 ```
 
 The page auto-refreshes every 30 seconds.
@@ -72,22 +72,16 @@ Keep the Terminal window open while the Kindle display is running.
 
 ## Useful URLs
 
-Show both nearby bus stops:
+Show all configured bus stops:
 
 ```text
 http://YOUR_COMPUTER_IP:8080/
 ```
 
-Show Blk REMOVED_STOP_ALIAS AMK, stop `REMOVED_BUS_STOP`:
+Show one configured bus stop by alias:
 
 ```text
-http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS
-```
-
-Show REMOVED_WEATHER_AREA Avenue 4 Blk REMOVED_STOP_ALIAS, stop `REMOVED_BUS_STOP`:
-
-```text
-http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS
+http://YOUR_COMPUTER_IP:8080/home
 ```
 
 Show only one bus service:
@@ -119,8 +113,12 @@ http://YOUR_COMPUTER_IP:8080/api/bus
 The fallback single bus stop is configured in your private `.env` file:
 
 ```env
-BUS_STOP=REMOVED_BUS_STOP
-BUS_ADDRESS=Blk REMOVED_STOP_ALIAS AMK
+BUS_STOP=00000
+BUS_ADDRESS=My Bus Stop
+DISPLAY_STOPS=home|00000|My Bus Stop;work|11111|Another Bus Stop
+WEATHER_AREA=Singapore
+GREETING_TEXT=Good morning
+REMINDER_TEXT=Remember to bring everything you need.
 ```
 
 To permanently use another fallback stop, edit those two values in `.env`, save the file, then restart:
@@ -132,16 +130,22 @@ python3 bus_kindle.py
 You can also change the bus stop from the URL without editing code:
 
 ```text
-http://YOUR_COMPUTER_IP:8080/?stop=REMOVED_BUS_STOP&address=Ang%20Mo%20Kio%20Ave%204%20Blk%20REMOVED_STOP_ALIAS
+http://YOUR_COMPUTER_IP:8080/?stop=11111&address=Another%20Bus%20Stop
 ```
 
 For Kindle landscape mode:
 
 ```text
-http://YOUR_COMPUTER_IP:8080/REMOVED_STOP_ALIAS?layout=landscape&refresh=30
+http://YOUR_COMPUTER_IP:8080/home?layout=landscape&refresh=30
 ```
 
 Use LTA's bus stop code for `stop`. The `address` value is just a display label; replace spaces with `%20`.
+
+`DISPLAY_STOPS` uses this format:
+
+```env
+alias|bus_stop_code|display_label;another_alias|another_code|another_label
+```
 
 ## Notes
 

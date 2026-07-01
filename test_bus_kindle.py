@@ -99,7 +99,7 @@ class BusKindleTests(unittest.TestCase):
                 {
                     "forecasts": [
                         {"area": "Bishan", "forecast": "Cloudy"},
-                        {"area": "REMOVED_WEATHER_AREA", "forecast": "Partly Cloudy"},
+                        {"area": "Test Area", "forecast": "Partly Cloudy"},
                     ]
                 }
             ]
@@ -111,7 +111,7 @@ class BusKindleTests(unittest.TestCase):
             return FakeResponse(json.dumps(payload).encode("utf-8"))
 
         with patch("urllib.request.urlopen", fake_urlopen):
-            self.assertEqual(bus_kindle.fetch_weather_condition("REMOVED_WEATHER_AREA"), "Partly Cloudy")
+            self.assertEqual(bus_kindle.fetch_weather_condition("Test Area"), "Partly Cloudy")
 
     def test_weather_icon_for_condition(self):
         self.assertEqual(bus_kindle.weather_icon_for("Partly Cloudy (Night)"), "☁")
@@ -140,7 +140,7 @@ class BusKindleTests(unittest.TestCase):
 
         self.assertNotIn("<h1>My Bus Stop</h1>", html)
         self.assertNotIn("Stop 12345", html)
-        self.assertIn('<h1 class="greeting-text">大家好，欢迎来到REMOVED_PRIVATE_TEXT</h1>', html)
+        self.assertIn('<h1 class="greeting-text">Good morning</h1>', html)
         self.assertRegex(
             html,
             r'<h1 class="greeting-text greeting-time">今天是新加坡时间：[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} · \d{2}:\d{2}</h1>',
@@ -157,26 +157,26 @@ class BusKindleTests(unittest.TestCase):
         self.assertIn("Seats", html)
         self.assertIn("Standing", html)
         self.assertIn("Limited", html)
-        self.assertIn("REMOVED_REMINDER_TEXT", html)
+        self.assertIn("Remember to bring everything you need.", html)
         self.assertIn('content="60"', html)
 
     def test_render_page_can_show_both_bus_stops(self):
         html = bus_kindle.render_page(
-            "REMOVED_BUS_STOP",
-            "Blk REMOVED_STOP_ALIAS AMK",
+            "00000",
+            "My Bus Stop",
             None,
             60,
             {
                 "Stops": [
                     {
-                        "stop": "REMOVED_BUS_STOP",
-                        "address": "Blk REMOVED_STOP_ALIAS AMK",
+                        "stop": "00000",
+                        "address": "My Bus Stop",
                         "payload": {"Services": [{"ServiceNo": "265", "NextBus": {"EstimatedArrival": "", "Load": "SEA"}}]},
                         "error": None,
                     },
                     {
-                        "stop": "REMOVED_BUS_STOP",
-                        "address": "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS",
+                        "stop": "11111",
+                        "address": "Another Bus Stop",
                         "payload": {"Services": [{"ServiceNo": "76", "NextBus": {"EstimatedArrival": "", "Load": "SDA"}}]},
                         "error": None,
                     },
@@ -185,10 +185,10 @@ class BusKindleTests(unittest.TestCase):
             None,
         ).decode("utf-8")
 
-        self.assertIn("Blk REMOVED_STOP_ALIAS AMK", html)
-        self.assertIn("REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS", html)
-        self.assertIn("Stop REMOVED_BUS_STOP", html)
-        self.assertIn("Stop REMOVED_BUS_STOP", html)
+        self.assertIn("My Bus Stop", html)
+        self.assertIn("Another Bus Stop", html)
+        self.assertIn("Stop 00000", html)
+        self.assertIn("Stop 11111", html)
         self.assertIn('<div class="service-no">265</div>', html)
         self.assertIn('<div class="service-no">76</div>', html)
 
@@ -253,17 +253,28 @@ class BusKindleTests(unittest.TestCase):
             self.assertEqual(bus_kindle.default_stop(), "98765")
             self.assertEqual(bus_kindle.default_address(), "Example Stop")
 
-    def test_default_stop_is_blk_REMOVED_STOP_ALIAS(self):
+    def test_default_stop_is_generic_placeholder(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(bus_kindle.default_stop(), "REMOVED_BUS_STOP")
-            self.assertEqual(bus_kindle.default_address(), "Blk REMOVED_STOP_ALIAS AMK")
+            self.assertEqual(bus_kindle.default_stop(), "00000")
+            self.assertEqual(bus_kindle.default_address(), "My Bus Stop")
 
-    def test_stop_from_path_supports_nearby_stops(self):
-        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_STOP_ALIAS"), ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"))
-        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_BUS_STOP"), ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"))
-        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_STOP_ALIAS"), ("REMOVED_BUS_STOP", "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS"))
-        self.assertEqual(bus_kindle.stop_from_path("/REMOVED_BUS_STOP"), ("REMOVED_BUS_STOP", "REMOVED_WEATHER_AREA Ave 4 Blk REMOVED_STOP_ALIAS"))
-        self.assertIsNone(bus_kindle.stop_from_path("/unknown"))
+    def test_display_stops_can_come_from_environment(self):
+        with patch.dict(os.environ, {"DISPLAY_STOPS": "home|00000|My Bus Stop;work|11111|Another Bus Stop"}, clear=True):
+            self.assertEqual(
+                bus_kindle.display_stops(),
+                [
+                    {"alias": "home", "stop": "00000", "address": "My Bus Stop"},
+                    {"alias": "work", "stop": "11111", "address": "Another Bus Stop"},
+                ],
+            )
+
+    def test_stop_from_path_supports_configured_display_stops(self):
+        with patch.dict(os.environ, {"DISPLAY_STOPS": "home|00000|My Bus Stop;work|11111|Another Bus Stop"}, clear=True):
+            self.assertEqual(bus_kindle.stop_from_path("/home"), ("00000", "My Bus Stop"))
+            self.assertEqual(bus_kindle.stop_from_path("/00000"), ("00000", "My Bus Stop"))
+            self.assertEqual(bus_kindle.stop_from_path("/work"), ("11111", "Another Bus Stop"))
+            self.assertEqual(bus_kindle.stop_from_path("/11111"), ("11111", "Another Bus Stop"))
+            self.assertIsNone(bus_kindle.stop_from_path("/unknown"))
 
     def test_normalise_layout_accepts_horizontal_aliases(self):
         self.assertEqual(bus_kindle.normalise_layout("horizontal"), "landscape")

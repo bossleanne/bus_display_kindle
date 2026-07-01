@@ -26,21 +26,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 
-DEFAULT_STOP = "REMOVED_BUS_STOP"
-DEFAULT_ADDRESS = "Blk REMOVED_STOP_ALIAS AMK"
+DEFAULT_STOP = "00000"
+DEFAULT_ADDRESS = "My Bus Stop"
 DEFAULT_REFRESH_SECONDS = 30
 DEFAULT_LTA_BUS_ARRIVAL_URL = "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival"
 DEFAULT_WEATHER_FORECAST_URL = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
-DEFAULT_WEATHER_AREA = "REMOVED_WEATHER_AREA"
+DEFAULT_WEATHER_AREA = "Singapore"
+DEFAULT_GREETING_TEXT = "Good morning"
+DEFAULT_REMINDER_TEXT = "Remember to bring everything you need."
 MACOS_CERTIFICATE_HELPER = "/Applications/Python 3.14/Install Certificates.command"
-BUS_STOPS = {
-    "blkREMOVED_STOP_ALIAS": ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
-    "blkREMOVED_STOP_ALIAS": ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
-}
-DISPLAY_STOPS = [
-    ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
-    ("REMOVED_BUS_STOP", "Blk REMOVED_STOP_ALIAS AMK"),
-]
 
 
 def fetch_bus_arrivals(stop: str, service: str | None = None) -> dict[str, Any]:
@@ -67,7 +61,8 @@ def fetch_bus_arrivals(stop: str, service: str | None = None) -> dict[str, Any]:
         return json.loads(response.read().decode("utf-8"))
 
 
-def fetch_weather_condition(area: str = DEFAULT_WEATHER_AREA) -> str:
+def fetch_weather_condition(area: str | None = None) -> str:
+    area = (area or os.environ.get("WEATHER_AREA") or DEFAULT_WEATHER_AREA).strip()
     endpoint = os.environ.get("WEATHER_FORECAST_URL", DEFAULT_WEATHER_FORECAST_URL)
     request = urllib.request.Request(
         endpoint,
@@ -324,6 +319,8 @@ def render_page(
     body_class = f' class="{layout}"' if layout == "landscape" else ""
     weather_text = html.escape(weather_condition or "--")
     weather_icon = html.escape(weather_icon_for(weather_condition))
+    greeting = html.escape(greeting_text())
+    reminder = html.escape(reminder_text())
     debug_panel = ""
     if debug:
         debug_panel = """
@@ -729,7 +726,7 @@ def render_page(
       <header>
         <div class="greeting-row">
           <div class="greeting-copy">
-            <h1 class="greeting-text">REMOVED_GREETING_TEXT</h1>
+            <h1 class="greeting-text">{greeting}</h1>
             <h1 class="greeting-text greeting-time">今天是新加坡时间：{display_date} · {display_time}</h1>
           </div>
           <div class="weather-icon">{weather_icon}</div>
@@ -737,7 +734,7 @@ def render_page(
       </header>
     </div>
     {body}
-    <section class="reminder">REMOVED_REMINDER_TEXT</section>
+    <section class="reminder">{reminder}</section>
     {debug_panel}
     <footer>Auto-refreshes every {refresh_seconds}s. Add ?service=265 to show one bus. Add ?layout=landscape for horizontal mode.</footer>
   </div>
@@ -761,9 +758,52 @@ def default_address() -> str:
     return os.environ.get("BUS_ADDRESS", DEFAULT_ADDRESS).strip() or DEFAULT_ADDRESS
 
 
+def greeting_text() -> str:
+    return os.environ.get("GREETING_TEXT", DEFAULT_GREETING_TEXT).strip() or DEFAULT_GREETING_TEXT
+
+
+def reminder_text() -> str:
+    return os.environ.get("REMINDER_TEXT", DEFAULT_REMINDER_TEXT).strip() or DEFAULT_REMINDER_TEXT
+
+
+def parse_display_stops(value: str) -> list[dict[str, str]]:
+    stops = []
+    for raw_item in value.split(";"):
+        item = raw_item.strip()
+        if not item:
+            continue
+
+        parts = [part.strip() for part in item.split("|")]
+        if len(parts) == 2:
+            stop, address = parts
+            alias = stop
+        elif len(parts) == 3:
+            alias, stop, address = parts
+        else:
+            continue
+
+        if stop and address:
+            stops.append({"alias": alias or stop, "stop": stop, "address": address})
+    return stops
+
+
+def display_stops() -> list[dict[str, str]]:
+    configured = parse_display_stops(os.environ.get("DISPLAY_STOPS", ""))
+    if configured:
+        return configured
+    return [{"alias": default_stop(), "stop": default_stop(), "address": default_address()}]
+
+
 def stop_from_path(path: str) -> tuple[str, str] | None:
     key = path.strip("/").lower()
-    return BUS_STOPS.get(key)
+    if not key:
+        return None
+
+    for item in display_stops():
+        aliases = {item["alias"].lower(), item["stop"].lower()}
+        if key in aliases:
+            return item["stop"], item["address"]
+    return None
 
 
 class BusHandler(BaseHTTPRequestHandler):
@@ -797,7 +837,9 @@ class BusHandler(BaseHTTPRequestHandler):
         weather_condition = None
         if show_all_stops:
             stop_payloads = []
-            for display_stop, display_address in DISPLAY_STOPS:
+            for item in display_stops():
+                display_stop = item["stop"]
+                display_address = item["address"]
                 stop_payload = None
                 stop_error = None
                 try:
@@ -872,9 +914,9 @@ def main() -> None:
     server = ThreadingHTTPServer(("0.0.0.0", port), BusHandler)
     host = local_ip_address() or "YOUR_COMPUTER_IP"
     print(f"Kindle bus display running on port {port}.")
-    print(f"Open both stops: http://{host}:{port}/")
-    print(f"Blk REMOVED_STOP_ALIAS: http://{host}:{port}/REMOVED_STOP_ALIAS")
-    print(f"Blk REMOVED_STOP_ALIAS: http://{host}:{port}/REMOVED_STOP_ALIAS")
+    print(f"Open configured stops: http://{host}:{port}/")
+    for item in display_stops():
+        print(f"{item['address']}: http://{host}:{port}/{item['alias']}")
     if host == "YOUR_COMPUTER_IP":
         print("Could not detect your IP automatically. On macOS, run: ipconfig getifaddr en0")
     print(f"Default stop: {default_stop()} ({default_address()})")
