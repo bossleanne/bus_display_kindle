@@ -267,7 +267,6 @@ def render_bus_panel(
 ) -> str:
     service_note = f" · {html.escape(service)}路" if service else ""
     refresh_fields = [
-        ("stop", stop),
         ("address", address),
         ("refresh", str(refresh_seconds)),
         ("layout", layout),
@@ -282,7 +281,6 @@ def render_bus_panel(
     if show_stop_heading:
         heading = f"""
         <h2>{html.escape(address)}</h2>
-        <p>Stop {html.escape(stop)}{service_note}</p>
         """
 
     return f"""
@@ -291,7 +289,7 @@ def render_bus_panel(
         <!--  <h2>巴士到达时间{service_note}</h2> -->
         {heading}
         <div class="update-row">
-          <p>最后更新：{updated}</p>
+          <h2>最后更新：{updated}</h2>
           <a class="refresh-link" href="{html.escape(refresh_href, quote=True)}">refresh</a>
         </div>
       </div>
@@ -424,7 +422,7 @@ def render_page(
       border: 3px solid #000;
       margin-bottom: 12px;
       padding: 10px 12px;
-      font-size: 22px;
+      font-size: 30px;
       line-height: 1.25;
       font-weight: bold;
     }}
@@ -727,7 +725,7 @@ def render_page(
         <div class="greeting-row">
           <div class="greeting-copy">
             <h1 class="greeting-text">{greeting}</h1>
-            <h1 class="greeting-text greeting-time">今天是新加坡时间：{display_date} · {display_time}</h1>
+            <h1 class="greeting-text greeting-time">{display_date} · {display_time}</h1>
           </div>
           <div class="weather-icon">{weather_icon}</div>
         </div>
